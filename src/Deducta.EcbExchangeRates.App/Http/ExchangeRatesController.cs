@@ -28,4 +28,26 @@ public class ExchangeRatesController(IExchangeRateRepository exchangeRateReposit
         }));
         return response;
     }
+    
+    [Function(nameof(GetYearlyAvarageRates))]
+    public async Task<HttpResponseData> GetYearlyAvarageRates(
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "exchange-rates/yearly-average/{year}")]
+        HttpRequestData req,
+        int year, FunctionContext context)
+    {
+        var currentYear = DateTimeOffset.UtcNow.Year;
+        var validYear = year > 1999 && year <= currentYear;
+        if (!validYear)
+        {
+            return req.CreateResponse(HttpStatusCode.BadRequest);
+        }
+        var rates = await exchangeRateRepository.GetYearlyAverageExchangeRate(year);
+        var response = req.CreateResponse(HttpStatusCode.OK);
+        response.Headers.Add("Content-Type", "application/json");
+        await response.WriteStringAsync(JsonSerializer.Serialize(rates, new JsonSerializerOptions()
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+        }));
+        return response;
+    }
 }

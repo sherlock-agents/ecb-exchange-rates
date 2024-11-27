@@ -1,4 +1,5 @@
 using System.Security.Authentication;
+using Deducta.EcbExchangeRates.App.CurrencyApi;
 using Deducta.EcbExchangeRates.App.Dtos;
 using Deducta.EcbExchangeRates.App.ExchangeRates;
 using Microsoft.Azure.Functions.Worker;
@@ -17,8 +18,12 @@ BsonClassMap.RegisterClassMap<ExchangeRate>(
         classMap.AutoMap();
         classMap.SetIgnoreExtraElements(true);
     });
-var mongoDbConnectionString = builder.Configuration.GetSection("MongoDbConnectionString").Value;
-builder.Services.AddHttpClient();
+var mongoDbConnectionString = builder.Configuration.GetSection("MongoDbConnectionString").Value ??
+                              throw new NullReferenceException("MongoDbConnectionString");
+var openExchangeRateKey = builder.Configuration.GetSection("OpenExchangeRateApiKey").Value ??
+                          throw new NullReferenceException("OpenExchangeRateApiKey");
+builder.Services.AddHttpClient("CurrencyApi",
+    client => { client.BaseAddress = new Uri("https://api.currencyapi.com"); });
 builder.Services.AddScoped<MongoClient>(_ =>
 {
     var settings = MongoClientSettings.FromUrl(
@@ -32,8 +37,9 @@ builder.Services.AddTransient<IExchangeRateRepository>(sp =>
 {
     var mongoClient = sp.GetRequiredService<MongoClient>();
     var collection = mongoClient.GetDatabase("Rates").GetCollection<ExchangeRate>("Rates");
-    return new ExchangeRateRepository(sp.GetRequiredService<IHttpClientFactory>().CreateClient(),
-        "https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml", collection);
+    return new CurrencyApiExchangeRateRepository(
+        sp.GetRequiredService<IHttpClientFactory>().CreateClient("CurrencyApi"),
+        openExchangeRateKey, collection);
 });
 
 builder.Services
