@@ -107,7 +107,7 @@ public class CurrencyApiExchangeRateRepository(
             Builders<ExchangeRate>.Filter.Lt(x => x.Date, startOfNextDay.Ticks)
         );
         var data = await collection.FindAsync(filter, cancellationToken: cancellationToken);
-        return await data.SingleAsync(cancellationToken: cancellationToken);
+        return await data.FirstAsync(cancellationToken: cancellationToken);
     }
 
     public async Task<ExchangeRate> GetYearlyAverageExchangeRate(int year,
